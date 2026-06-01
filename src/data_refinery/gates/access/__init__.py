@@ -7,12 +7,12 @@ before any parsing is attempted.
 
 from .extension import check_extension
 from .size import check_size
-from .permissions import check_permissions
-from .integrity import check_integrity
+from .read import check_read_access
+from .is_file import check_is_file
 
 __all__ = [
     "check_extension",
     "check_size",
-    "check_permissions",
-    "check_integrity",
+    "check_read_access",
+    "check_is_file",
 ]

@@ -43,8 +43,8 @@ Example usage:
 from .access import (
     check_extension,
     check_size,
-    check_permissions,
-    check_integrity,
+    check_read_access,
+    check_is_file,
 )
 
 # ============================================================================
@@ -54,6 +54,6 @@ from .access import (
 __all__ = [
     "check_extension",
     "check_size",
-    "check_permissions",
-    "check_integrity",
+    "check_read_access",
+    "check_is_file",
 ]
