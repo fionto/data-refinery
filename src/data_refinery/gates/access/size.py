@@ -1,5 +1,5 @@
 from pathlib import Path
-from data_refinery.core import FileState, GateFunction
+from ...core import FileState, GateFunction
 
 def check_size(min_bytes: int = 1) -> GateFunction:
     """

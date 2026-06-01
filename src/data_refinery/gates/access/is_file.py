@@ -1,5 +1,5 @@
 from pathlib import Path
-from data_refinery.core import FileState, GateFunction
+from ...core import FileState, GateFunction
 
 def check_is_file() -> GateFunction:
     """
