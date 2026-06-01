@@ -80,11 +80,10 @@ class Pipeline:
         Internal helper: execute the fail-fast gate sequence.
         """
         for gate in self.gates:
-            if not state.is_valid:
-                break  # Fail-fast: stop on first rejection
             state = gate(state)
-        
-        return state   
+            if not state.is_valid:
+                break  # Stop immediately the moment a gate trips the wire
+        return state
     
     def add_gate(self, gate: GateFunction) -> "Pipeline":
         """

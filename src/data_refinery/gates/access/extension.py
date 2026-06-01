@@ -1,5 +1,5 @@
 from pathlib import Path
-from core import FileState, GateFunction
+from data_refinery.core import FileState, GateFunction
 
 def check_extension(extensions: tuple[str, ...] = ('.txt', '.csv')) -> GateFunction:
     """
