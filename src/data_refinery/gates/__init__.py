@@ -40,7 +40,7 @@ Example usage:
 # ACCESS LAYER: File-system and OS-level validation gates
 # ============================================================================
 
-from data_refinery.gates.access import (
+from .access import (
     check_extension,
     check_size,
     check_permissions,
