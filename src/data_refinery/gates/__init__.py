@@ -39,12 +39,21 @@ Example usage:
 # ============================================================================
 # ACCESS LAYER: File-system and OS-level validation gates
 # ============================================================================
-# These gates ensure the file is readable, accessible, and in the right format
-# before any parsing is attempted.
- 
+
 from data_refinery.gates.access import (
     check_extension,
-    check_file_size,
-    check_read_permissions,
-    check_file_integrity,
+    check_size,
+    check_permissions,
+    check_integrity,
 )
+
+# ============================================================================
+# PUBLIC API
+# ============================================================================
+
+__all__ = [
+    "check_extension",
+    "check_size",
+    "check_permissions",
+    "check_integrity",
+]
