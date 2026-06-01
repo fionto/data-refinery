@@ -5,7 +5,7 @@ Core pipeline machinery: state tracking and validation orchestration.
 from dataclasses import dataclass, field
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Callable
+from typing import Optional, Callable
 
 @dataclass
 class FileState:
@@ -13,19 +13,20 @@ class FileState:
     Tracks validation lifecycle for a single file moving through the pipeline.
     
     Attributes:
-        path: The file being validated.
-        valid: Current validation status; remains True until a gate rejects it.
+        filepath: The file being validated.
+        pipeline_stage: Current Pipeline stage
+        is_valid: Current validation status; remains True until a gate rejects it.
         rejection_reason: Human-readable explanation of why validation failed.
         rejection_stage: The specific gate that rejected the file (e.g., "extension_check").
         timestamp_created: When this file entered the pipeline (useful for batch diagnostics).
     """
-    filepath: Path
-    is_valid: bool = True
-    # Optional[str] signals to users that these fields may be None during early pipeline stages
-    rejection_reason: Optional[str] = None
-    rejection_stage: Optional[str] = None
+    filepath : Path
+    pipeline_stage : Optional[str] = None
+    is_valid : bool = True
+    rejection_reason : Optional[str] = None
+    rejection_stage : Optional[str] = None
     # Automatically captures the native datetime object upon instantiation
-    timestamp_created: datetime = field(default_factory=datetime.now)
+    timestamp_created : datetime = field(default_factory=datetime.now)
 
 
 @dataclass
@@ -43,6 +44,10 @@ class FileStateCollection:
     def rejected(self) -> list[FileState]:
         """Return only files that were rejected."""
         return [f for f in self.files if not f.is_valid]
+   
+    def rejected_at_stage(self, stage: str) -> list[FileState]:
+        """Return files that were rejected at a specific pipeline stage."""
+        return [f for f in self.files if not f.is_valid and f.pipeline_stage == stage]
     
     def summary(self):
         """Provide quick stats for logging or UI display."""
@@ -58,23 +63,42 @@ class Pipeline:
     The validation engine: orchestrates files through a sequence of gates.
     """
     
-    def __init__(self, gates: List[GateFunction]) -> None:
+    def __init__(self, gates: list[GateFunction], stage_name: str) -> None:
         """
         Initialize the pipeline with a sequence of validation gates.
         
         Args:
             gates: List of callable gate functions (or gate objects), 
             each transforming FileState
+            stage_name: Name of this pipeline stage (e.g., "validation")
         """
         self.gates = gates
+        self.stage_name = stage_name
 
-    def add_gate(self, gate: GateFunction) -> None:
-        """Register a new gate."""
-        self.gates.append(gate)
-    
-    def validate(self, filepath: str) -> FileState:
+    def _run_gates(self, state: FileState) -> FileState:
         """
-        Stream a file through all gates, stopping at first failure.
+        Internal helper: execute the fail-fast gate sequence.
+        """
+        for gate in self.gates:
+            if not state.is_valid:
+                break  # Fail-fast: stop on first rejection
+            state = gate(state)
+        
+        return state   
+    
+    def add_gate(self, gate: GateFunction) -> "Pipeline":
+        """
+        Register a new gate to the pipeline chain.
+        
+        Returns self to enable method chaining (e.g., pipeline.add_gate(g1).add_gate(g2)).
+        """
+        self.gates.append(gate)
+        return self
+    
+    def run_new(self, filepath:str) -> FileState:
+        """
+        Create a fresh FileState and stream it through all gates.
+        Use this when starting a workflow on a new file.
         
         Args:
             filepath: Path to the file to validate.
@@ -82,11 +106,26 @@ class Pipeline:
         Returns:
             FileState: The validation result.
         """
-        state = FileState(filepath=Path(filepath))
+        state = FileState(filepath=Path(filepath), pipeline_stage=self.stage_name)
+        return self._run_gates(state)
+
+    def run_existing(self, state: FileState) -> FileState:
+        """
+        Run an existing FileState through all gates.
+
+        Updates pipeline_stage to this pipeline's stage_name, overwriting the previous stage.
+        Use this when passing a file through a subsequent pipeline stage.
         
-        for gate in self.gates:
-            if not state.is_valid:
-                break  # Fail-fast: stop on first rejection
-            state = gate(state)
+        Args:
+            state: An existing FileState (likely from a prior pipeline stage).
         
-        return state
+        Returns:
+            FileState: The modified state after validation.
+        """
+        # Guard clause: If it's already dead, don't let a subsequent pipeline claim it
+        if not state.is_valid:
+            return state
+        
+        # Update the stage tracker before running gates
+        state.pipeline_stage = self.stage_name
+        return self._run_gates(state)
